@@ -92,7 +92,7 @@ class BaseMotionHead(BaseTaskHead):
 
             if self.probabilistic_enable:
                 prob_latent_dim = self.prob_latent_dim * \
-                    self.n_future if self.using_prob_each_future else self.prob_latent_dim
+                    self.n_future if self.using_prob_each_future else self.prob_latent_dim#选择是否考虑每个未来时间步对概率分布的潜在空间造成的影响 否
 
                 if self.using_spatial_prob:
                     self.present_distribution = SpatialDistributionModule(
@@ -243,26 +243,34 @@ class BaseMotionHead(BaseTaskHead):
             present_distribution_log_sigma: shape (b, s, latent_dim)
             future_distribution_mu: shape (b, s, latent_dim)
             future_distribution_log_sigma: shape (b, s, latent_dim)
+            
+        通过 present_distribution 计算当前时间步特征的分布参数，包括均值 present_mu 和对数标准差 present_log_sigma。
+        如果提供了未来时间步的标签信息 future_distribution_inputs 通过 future_distribution 计算未来时间步的分布参数，包括均值 future_mu 和对数标准差 future_log_sigma。
+        生成一个随机样本 sample 通过正态分布采样，具体采样策略取决于是否处于训练模式或使用了标签。
+        根据配置对生成的样本进行上采样（双线性插值）。
+        返回生成的样本和分布参数。
         """
         b, s, _, h, w = present_features.size()
         assert s == 1
-
+        #[batch, latent_dim, h, w]
         present_mu, present_log_sigma = self.present_distribution(
             present_features)
 
         future_mu, future_log_sigma = None, None
         if future_distribution_inputs is not None:
             # Concatenate future labels to z_t
+            #[b, 1, (s-1)*cfg.PROB_FUTURE_DIM, h, w]
             future_features = future_distribution_inputs[:, 1:].contiguous().view(
                 b, 1, -1, h, w)
             future_features = torch.cat(
                 [present_features, future_features], dim=2)
-
+            #[batch, latent_dim, h, w]
             future_mu, future_log_sigma = self.future_distribution(
                 future_features)
 
         if noise is None:
             if self.training:
+                #会生成一个均值为0、标准差为1的正态分布中随机采样的张量，其形状与 present_mu 相同
                 noise = torch.randn_like(present_mu)
             else:
                 noise = torch.zeros_like(present_mu)
@@ -274,11 +282,12 @@ class BaseMotionHead(BaseTaskHead):
         else:
             mu = present_mu
             sigma = torch.exp(present_log_sigma)
-
+        ##[batch, latent_dim, h, w]
         sample = mu + sigma * noise
 
         # upsampling sample to the spatial size of features
         if self.using_spatial_prob:
+            #[batch, latent_dim, H,W ] 对样本进行双线性插值上采样
             sample = F.interpolate(
                 sample, size=present_features.shape[-2:], mode='bilinear')
         else:

@@ -52,13 +52,29 @@ class NaiveTemporalModel(BaseModule):
     def forward(self, x, **kwargs):
         return self.channel_conv(x[:, -1])
 
+# 这段代码定义了一个名为Temporal3DConvModel的类，该类继承自BaseModule，并且被注册为NECKS（neck）模块。
+
+# 主要功能如下：
+
+# 在__init__方法中，初始化了模型的各种参数，包括输入通道数(in_channels)、感受野(receptive_field)、输入形状(input_shape)、网格配置(grid_conf)等等。在初始化过程中，还创建了一些用于处理时间序列数据的模块，如TemporalBlock和Bottleneck3D，并将它们按顺序组合成模型的主体部分。
+
+# 在forward方法中，对输入数据 x 进行一系列的操作：
+
+# 对时间序列进行了累积形变（warp）操作，考虑了未来的姿态信息(future_egomotion)和额外的形变(aug_transform)，使用了 FeatureWarper 中的 cumulative_warp_features 方法。
+# 如果启用了6DoF姿态信息 (self.input_egopose)，则将未来的姿态信息作为额外的通道拼接到输入数据 x 中。
+# 对输入数据进行了有效区域（img_is_valid）的处理，保留有效区域的特征。
+# 对输入数据进行了形状调整，使其符合模型的输入要求。
+# 将处理后的输入数据传递给模型的主体部分（self.model）进行特征提取。
+# 如果启用了跳跃连接 (self.with_skip_connect)，将原始输入数据 input_x 与模型输出相加。
+# 最终返回当前时间步的特征。
+# 总体来说，该模型主要用于处理时间序列数据，提取特征，并考虑了未来姿态的影响
 
 @NECKS.register_module()
 class Temporal3DConvModel(BaseModule):
     def __init__(
         self,
         in_channels,
-        receptive_field,
+        receptive_field,#感受野
         input_shape,
         grid_conf=None,
         start_out_channels=64,

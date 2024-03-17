@@ -53,31 +53,41 @@ class IterativeFlow(BaseMotionHead):
         3. decode present & future states with the decoder heads
         '''
         bevfeats = bevfeats[0]
+        #训练时用了未来数据 推理没用
         if self.training or self.posterior_with_label:
-            self.training_labels, future_distribution_inputs = self.prepare_future_labels(
+            self.training_labels, future_distribution_inputs = self.prepare_future_labels( 
                 targets)
         else:
             future_distribution_inputs = None
 
         res = {}
         if self.n_future > 0:
+            #的第 1 维（索引从 0 开始）上插入一个维度。这会将 bevfeats 的形状变为 
+            #[batch_size, 1, channels, height, width]。这个维度的大小为 1，表示每个序列中有一个时间步。
             present_state = bevfeats.unsqueeze(dim=1).contiguous()
 
             # sampling probabilistic distribution
+            #sample ：[batch, latent_dim, H,W ] 有upsample 使得他们分辨率相同
             sample, output_distribution = self.distribution_forward(
                 present_state, future_distribution_inputs, noise
             )
 
             b, _, _, h, w = present_state.shape
+            #(batch_size, channels, height, width) 也就是变换之前的present_state
             hidden_state = present_state[:, 0]
 
             future_states = self.future_prediction(sample, hidden_state)
             future_states = torch.cat([present_state, future_states], dim=1)
             # flatten dimensions of (batch, sequence)
+            #(batch * seq, ...)降维
             batch, seq = future_states.shape[:2]
             flatten_states = future_states.flatten(0, 1)
 
             if self.training:
+                #（1）有相同的键时：会使用最新的字典 b 中 该 key 对应的 value 值。
+                #（2）有新的键时：会直接把字典 b 中的 key、value 加入到 a 中。
+                #将 output_distribution 字典中的键值对添加到 res 字典中
+                #均值 (present_mu, future_mu) 和标准差 (present_log_sigma, future_log_sigma）
                 res.update(output_distribution)
 
             for task_key, task_head in self.task_heads.items():

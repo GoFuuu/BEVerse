@@ -49,6 +49,10 @@ class DistributionModule(nn.Module):
 class SpatialDistributionModule(nn.Module):
     """
     A convolutional net that parametrises a diagonal Gaussian distribution.
+    
+    输入 s_t 经过 DistributionEncoder 进行编码，得到低维特征表示 encoding。
+    通过 SpatialDistributionModule 的 last_conv,使用1x1卷积层将 encoding 映射为对角高斯分布的均值和对数标准差。
+    返回对角高斯分布的均值 mu 和对数标准差 log_sigmav [batch, latent_dim, h, w]。
     """
 
     def __init__(
@@ -74,6 +78,7 @@ class SpatialDistributionModule(nn.Module):
     def forward(self, s_t):
         b, s = s_t.shape[:2]
         assert s == 1
+        # s_t[:, 0]：[batch, latent_dim, h, w] 
         encoding = self.encoder(s_t[:, 0])
 
         # [batch, latent_dim, h, w]
@@ -145,7 +150,16 @@ class FuturePrediction(torch.nn.Module):
 
         return x
 
-
+# 接收输入 sample_distribution（形状为 (batch_size, c_latent_dim, height, width)）和 hidden_state（形状为 (batch_size, c, height, width)）。
+# 迭代地进行未来预测，每次预测一个未来的帧
+# 将 sample_distribution 和当前帧的 hidden_state 沿通道维度拼接。
+# 通过卷积块 (offset_conv) 处理拼接的特征，然后通过卷积层 (offset_pred) 预测流的偏移。
+# 使用流的偏移对当前帧进行流形变 (warp_with_flow)。
+# 将流形变后的帧再次与 sample_distribution 拼接。
+# 将拼接后的特征通过一系列 GRU 单元 (gru_cells) 进行处理。
+# 最后，通过卷积块 (spatial_conv) 处理特征，得到当前帧的预测结果。
+# 将每次的预测结果存储在列表 res 中，并更新当前状态。
+# 返回一个包含所有未来预测帧的张量，形状为 (batch_size, n_future, channels, height, width)。
 class ResFuturePrediction(torch.nn.Module):
     def __init__(self,
                  in_channels,
@@ -220,11 +234,11 @@ class ResFuturePrediction(torch.nn.Module):
 
             # updating current states
             if self.detach_state:
-                current_state = warp_state.detach()
+                current_state = warp_state.detach()#将 warp_state 的梯度分离 避免在后续的反向传播中更新 warp_state 时影响到 current_state 的梯度。
             else:
                 current_state = warp_state.clone()
 
-        return torch.stack(res, dim=1)
+        return torch.stack(res, dim=1)#dim=1 表示在维度 1 上进行堆叠 (batch_size, channels, height, width)  -》》》》 (batch_size, n_future, channels, height, width)。
 
 
 class ResFuturePredictionV2(torch.nn.Module):
@@ -434,16 +448,16 @@ class ResFuturePredictionV1(torch.nn.Module):
 def warp_with_flow(x, flow):
     B, C, H, W = x.size()
     # mesh grid
-    xx = torch.arange(0, W).view(1, -1).repeat(H, 1)
-    yy = torch.arange(0, H).view(-1, 1).repeat(1, W)
-    xx = xx.view(1, 1, H, W).repeat(B, 1, 1, 1)
-    yy = yy.view(1, 1, H, W).repeat(B, 1, 1, 1)
-    grid = torch.cat((xx, yy), dim=1).float()
-    flow += grid.type_as(flow)
-    flow = flow.permute(0, 2, 3, 1)
+    xx = torch.arange(0, W).view(1, -1).repeat(H, 1)#沿着行方向复制 H 次，列方向复制 1 次
+    yy = torch.arange(0, H).view(-1, 1).repeat(1, W)#得到H*W的网  沿着列方向复制 1 次，行方向复制 W 次
+    xx = xx.view(1, 1, H, W).repeat(B, 1, 1, 1)#: 
+    yy = yy.view(1, 1, H, W).repeat(B, 1, 1, 1)#B*1*H*W 
+    grid = torch.cat((xx, yy), dim=1).float()#B*2*H*W
+    flow += grid.type_as(flow)#将flow加入x y 的位置信息
+    flow = flow.permute(0, 2, 3, 1)#B H W 2 是转置而不是取出放入
 
-    flow[..., 0] = flow[..., 0] / (W - 1) * 2 - 1.0
+    flow[..., 0] = flow[..., 0] / (W - 1) * 2 - 1.0 #映射到[-1,1] 归一化
     flow[..., 1] = flow[..., 1] / (H - 1) * 2 - 1.0
-    x = F.grid_sample(x, flow, mode='bilinear', align_corners=True)
+    x = F.grid_sample(x, flow, mode='bilinear', align_corners=True)#对输入 x 进行双线性插值
 
     return x

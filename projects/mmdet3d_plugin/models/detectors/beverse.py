@@ -73,7 +73,15 @@ class BEVerse(MVXTwoStageDetector):
             _, output_dim, ouput_H, output_W = x.shape
             x = x.view(B, S, N, output_dim, ouput_H, output_W)
 
-        # lifting with LSS
+        # lifting with LSS 
+        ## x 是当前处理的特征，而 img[1:] 可能包含了其他相关的特征或数据
+        #x, rots, trans, intrins, post_rots, post_trans = input
+        '''x：通常用来表示数据或特征，可能是一个张量或数组。
+        rots：可能指的是旋转矩阵或旋转向量，用于表示物体或相机的旋转状态。
+        trans：可能指的是平移向量，用于表示物体或相机的平移状态。
+        intrins：可能指的是内参矩阵（intrinsic matrix），它是相机内部的参数，用于描述相机镜头的特性。
+        post_rots：可能指的是处理或转换后的旋转矩阵或向量。
+        post_trans：可能指的是处理或转换后的平移向量。'''
         x = self.transformer([x] + img[1:])
 
         torch.cuda.synchronize()

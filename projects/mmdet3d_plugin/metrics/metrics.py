@@ -41,7 +41,7 @@ class IntersectionOverUnion(Metric):
 
     def update(self, prediction: torch.Tensor, target: torch.Tensor):
         tps, fps, _, fns, sups = stat_scores(
-            prediction, target, num_classes=self.n_classes, reduce='macro', mdmc_reduce='global').t()
+            prediction, target, num_classes=self.n_classes, task='multiclass',average='macro', multidim_average='global').t()
 
         self.true_positive += tps
         self.false_positive += fps

@@ -8,26 +8,73 @@ from matplotlib import pyplot as plt
 
 
 def cal_train_time(log_dicts, args):
+    # for i, log_dict in enumerate(log_dicts):
+    #     print(f'{"-" * 5}Analyze train time of {args.json_logs[i]}{"-" * 5}')
+    #     all_times = []
+    #     for epoch in log_dict.keys():
+    #         if args.include_outliers:
+    #             all_times.append(log_dict[epoch]['time'])
+    #         else:
+    #             all_times.append(log_dict[epoch]['time'][1:])
+    #     all_times = np.array(all_times)
+    #     epoch_ave_time = all_times.mean(-1)
+    #     slowest_epoch = epoch_ave_time.argmax()
+    #     fastest_epoch = epoch_ave_time.argmin()
+    #     std_over_epoch = epoch_ave_time.std()
+    #     print(f'slowest epoch {slowest_epoch + 1}, '
+    #           f'average time is {epoch_ave_time[slowest_epoch]:.4f}')
+    #     print(f'fastest epoch {fastest_epoch + 1}, '
+    #           f'average time is {epoch_ave_time[fastest_epoch]:.4f}')
+    #     print(f'time std over epochs is {std_over_epoch:.4f}')
+    #     print(f'average iter time: {np.mean(all_times):.4f} s/iter')
+    #     print()
+    
+
+
+
+    # for i, log_dict in enumerate(log_dicts):
+    #     print(f'{"-" * 5}Analyze train time of {args.json_logs[i]}{"-" * 5}')
+    #     all_times = []
+    #     for epoch in log_dict.keys():
+    #         all_times.extend(log_dict[epoch]['time'])
+    #     all_times = np.array(all_times, dtype=object)
+    #     epoch_ave_time = np.mean(all_times)
+    #     slowest_epoch = np.argmax(all_times)
+    #     fastest_epoch = np.argmin(all_times)
+    #     std_over_epochs = np.std(np.hstack(all_times))  # 修改此行
+    #     print(f'slowest epoch {slowest_epoch + 1}, '
+    #         f'average time is {epoch_ave_time:.4f}')
+    #     print(f'fastest epoch {fastest_epoch + 1}, '
+    #         f'average time is {epoch_ave_time:.4f}')
+    #     print(f'time std over epochs is {std_over_epochs:.4f}')
+    #     print(f'average iter time: {all_times.mean():.4f} s/iter')
+    #     print()
     for i, log_dict in enumerate(log_dicts):
         print(f'{"-" * 5}Analyze train time of {args.json_logs[i]}{"-" * 5}')
-        all_times = []
+        all_epoch_times = []
         for epoch in log_dict.keys():
-            if args.include_outliers:
-                all_times.append(log_dict[epoch]['time'])
-            else:
-                all_times.append(log_dict[epoch]['time'][1:])
-        all_times = np.array(all_times)
-        epoch_ave_time = all_times.mean(-1)
-        slowest_epoch = epoch_ave_time.argmax()
-        fastest_epoch = epoch_ave_time.argmin()
-        std_over_epoch = epoch_ave_time.std()
-        print(f'slowest epoch {slowest_epoch + 1}, '
-              f'average time is {epoch_ave_time[slowest_epoch]:.4f}')
-        print(f'fastest epoch {fastest_epoch + 1}, '
-              f'average time is {epoch_ave_time[fastest_epoch]:.4f}')
-        print(f'time std over epochs is {std_over_epoch:.4f}')
-        print(f'average iter time: {np.mean(all_times):.4f} s/iter')
+            all_epoch_times.append(np.sum(log_dict[epoch]['time']))
+        all_epoch_times = np.array(all_epoch_times)
+        slowest_epoch = np.argmax(all_epoch_times) + 1
+        fastest_epoch = np.argmin(all_epoch_times) + 1
+        std_over_epochs = np.std(all_epoch_times)
+        print(f'slowest epoch {slowest_epoch}, '
+            f'total time is {all_epoch_times[slowest_epoch - 1]:.4f}')
+        print(f'fastest epoch {fastest_epoch}, '
+            f'total time is {all_epoch_times[fastest_epoch - 1]:.4f}')
+        print(f'time std over epochs is {std_over_epochs:.4f}')
+        print(f'average epoch time: {np.mean(all_epoch_times):.4f} min/epoch')
         print()
+
+
+
+
+
+
+
+
+
+
 
 
 def plot_curve(log_dicts, args):
