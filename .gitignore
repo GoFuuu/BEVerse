@@ -24,6 +24,7 @@ mmdet3d.egg-info/
 eval_visualize/
 train_visualize/
 reason_visualize.tar
+__pycache__/
 develop-eggs/
 dist/
 downloads/
