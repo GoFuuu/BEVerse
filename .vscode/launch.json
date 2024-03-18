@@ -1,0 +1,57 @@
+
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "train Debug",
+            "type": "debugpy",
+            "python": "/home/gofuuu/miniconda3/envs/beverse/bin/python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "args": [
+                "--nproc_per_node=1",
+                "--master_port=29500",
+                "./tools/train.py",
+                "./work_dirs/beverse_tiny/beverse_tiny.py",
+                "--launcher=pytorch",
+
+            ],
+            "cwd": "/home/gofuuu/BEVerse",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}:${env:PYTHONPATH}"
+            },
+            "console": "integratedTerminal",
+            "stopOnEntry": false,
+        }
+        ,
+        {
+            "name": "Test Debug",
+            "type": "debugpy",
+            "python": "/home/gofuuu/miniconda3/envs/beverse/bin/python",
+            "request": "launch",
+            "module": "torch.distributed.launch",
+            "args": [
+                "--nproc_per_node=1",
+                "--master_port=29503",
+                "./tools/test.py",
+                "./work_dirs/beverse_small/beverse_small.py",
+                "./work_dirs/beverse_small/latest.pth",
+                "--launcher",
+                "pytorch",
+                "--eval",
+                "bbox",
+            ],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}:${env:PYTHONPATH}"
+            },
+            "console": "integratedTerminal",
+            "stopOnEntry": false,
+        }
+    ]
+}

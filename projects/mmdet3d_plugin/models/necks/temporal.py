@@ -77,6 +77,7 @@ class Temporal3DConvModel(BaseModule):
         receptive_field,#感受野
         input_shape,
         grid_conf=None,
+        #start_out_channels=64,
         start_out_channels=64,
         extra_in_channels=0,
         n_spatial_layers_between_temporal_layers=0,

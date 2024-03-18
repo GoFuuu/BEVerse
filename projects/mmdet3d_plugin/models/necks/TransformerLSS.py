@@ -151,11 +151,13 @@ class TransformerLSS(BaseModule):
 
     def forward(self, input, flip_x=False, flip_y=False):
         x, rots, trans, intrins, post_rots, post_trans = input
+        #2 3 6 512 16 44
         B, S, N, C, H, W = x.shape
         # flatten (batch, seq, num_cam)
         x = x.view(B * S * N, C, H, W)
+        #C : 512 -> 123 
+        #x torch.Size([36, 123, 16, 44])
         x = self.depthnet(x)
-
         depth = self.get_depth_dist(x[:, :self.D])
         # [B * S, N, D, H, W, 3]
         geom = self.get_geometry(rots, trans, intrins, post_rots, post_trans)
@@ -175,10 +177,11 @@ class TransformerLSS(BaseModule):
             geom[..., 0] = -geom[..., 0]
         if flip_y:
             geom[..., 1] = -geom[..., 1]
-
+        
         bev_feat = self.voxel_pooling(geom, volume)
+        
         bev_feat = bev_feat.view(B, S, *bev_feat.shape[1:])
-
+        # (B, S, C', H', W') torch.Size([2, 3, 64, 128, 128])
         return bev_feat
 
 
